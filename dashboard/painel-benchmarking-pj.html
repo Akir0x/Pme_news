@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benchmarking PJ — Bancos e Entrantes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
+  --inc:#1e3a8a; --inc-soft:#dbe4ff; --ent:#0f766e; --ent-soft:#ccf2ec;
+  --pos:#15803d; --neg:#b91c1c; --accent:#1e3a8a; --warn:#b45309;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0b0f17; --card:#131a26; --ink:#e5e7eb; --muted:#9ca3af; --line:#253042;
+    --inc:#8fa8ff; --inc-soft:#1f2a4d; --ent:#4fd1c0; --ent-soft:#123b37;
+    --pos:#4ade80; --neg:#f87171; --accent:#8fa8ff; --warn:#fbbf24;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 40px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:20px}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--inc-soft);color:var(--inc)}
+.grid{display:grid;gap:16px}
+.g5{grid-template-columns:repeat(5,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:1.25fr 1fr}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card h2{font-size:15px;margin:0 0 2px}
+.card .hint{color:var(--muted);font-size:12px;margin:0 0 14px}
+.kpi .lbl{color:var(--muted);font-size:12px}
+.kpi .val{font-size:24px;font-weight:700;margin-top:4px}
+.kpi .ctx{color:var(--muted);font-size:12px;margin-top:2px}
+.take{border-left:4px solid var(--accent)}
+.take b{display:block;font-size:14px;margin-bottom:4px}
+.take p{margin:0;color:var(--muted);font-size:13px}
+section{margin-top:16px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.filters button{font:inherit;font-size:12px;font-weight:600;border:1px solid var(--line);background:transparent;color:var(--ink);padding:6px 12px;border-radius:999px;cursor:pointer}
+.filters button.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.bars .row{display:grid;grid-template-columns:150px 1fr 64px;align-items:center;gap:10px;padding:6px 0}
+.bars .name{font-weight:500;font-size:13px}
+.bars .name small{display:block;color:var(--muted);font-weight:400;font-size:11px}
+.track{position:relative;height:18px;background:transparent}
+.fill{height:100%;border-radius:4px;min-width:3px}
+.fill.inc{background:var(--inc)} .fill.ent{background:var(--ent)}
+.amt{position:absolute;top:0;font-size:12px;line-height:18px;padding-left:6px;white-space:nowrap}
+.gr{text-align:right;font-weight:600;font-size:13px}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+svg text{font-family:inherit}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.inc{background:var(--inc-soft);color:var(--inc)} .pill.ent{background:var(--ent-soft);color:var(--ent)}
+.tablewrap{overflow-x:auto}
+.na{color:var(--muted)}
+.cmp li{margin:0 0 8px}
+.cmp{margin:0;padding-left:18px}
+.rank .r{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.rank .r:last-child{border-bottom:0}
+.rank .pos1{font-weight:700;color:var(--neg)}
+.pubtable td:nth-child(2){white-space:nowrap;color:var(--muted)}
+.src{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.ins{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.insight{border:1px solid var(--line);border-radius:10px;padding:16px;border-top:4px solid var(--accent)}
+.insight h3{margin:0 0 10px;font-size:14px}
+.insight dl{margin:0;display:grid;grid-template-columns:96px 1fr;gap:6px 10px;font-size:13px}
+.insight dt{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
+.insight dd{margin:0}
+.note{font-size:12px;color:var(--muted);margin:12px 0 0}
+@media (max-width:980px){.ins{grid-template-columns:1fr}}
+footer{margin-top:20px;color:var(--muted);font-size:12px}
+footer a{color:var(--muted)}
+@media (max-width:980px){.g5{grid-template-columns:repeat(2,1fr)}.g3,.g2{grid-template-columns:1fr}}
+@media (max-width:520px){.wrap{padding:20px 16px}.bars .row{grid-template-columns:110px 1fr 54px}h1{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>Benchmarking PJ: incumbentes x entrantes</h1>
+    <p class="sub">Crédito a PMEs, base de clientes, qualidade e estratégia dos principais players · protótipo com dados públicos reais</p>
+  </div>
+  <span class="tag">Atualizado em 22/10/2026 · dados de 2025 a out/2026</span>
+</header>
+
+<div class="grid g3">
+  <div class="card take"><b>Incumbentes concentram o volume</b><p>Itaú e Bradesco somam cerca de R$ 570 bi em carteira PME, mais de 40 vezes Mercado Pago e PagBank juntos.</p></div>
+  <div class="card take"><b>Entrantes crescem mais rápido</b><p>Mercado Pago (+40%) e PagBank (+31%) crescem 2 a 4 vezes o ritmo dos grandes, usando dados de vendas para dar crédito.</p></div>
+  <div class="card take"><b>Relacionamento já é digital</b><p>Nubank (6 mi) e Inter (3 mi) lideram em número de CNPJs, ainda puxados por MEIs, e avançam para micro e pequenas.</p></div>
+</div>
+
+<section class="grid g5">
+  <div class="card kpi"><div class="lbl">Inadimplência MPME</div><div class="val">5,71%</div><div class="ctx">mercado, jun/26</div></div>
+  <div class="card kpi"><div class="lbl">Inadimplência grandes</div><div class="val">0,66%</div><div class="ctx">mercado, jun/26</div></div>
+  <div class="card kpi"><div class="lbl">MPMEs no atraso PJ</div><div class="val">88,9%</div><div class="ctx">do crédito PJ &gt;90 dias</div></div>
+  <div class="card kpi"><div class="lbl">Juros médios PJ</div><div class="val">3,99% a.m.</div><div class="ctx">Anefac, fev/26</div></div>
+  <div class="card kpi"><div class="lbl">Desconto de duplicatas</div><div class="val">1,92% a.m.</div><div class="ctx">Anefac, fev/26</div></div>
+</section>
+
+<section class="grid g2">
+  <div class="card">
+    <h2>Carteira de crédito PME e crescimento anual</h2>
+    <p class="hint">R$ bilhões · último dado divulgado por cada player</p>
+    <div class="filters" role="group" aria-label="Filtro de players">
+      <button class="on" data-f="all">Todos</button>
+      <button data-f="inc">Incumbentes</button>
+      <button data-f="ent">Entrantes</button>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="legend"><span><i style="background:var(--inc)"></i>Incumbente</span><span><i style="background:var(--ent)"></i>Entrante</span><span>* PagBank: carteira total, inclui PF</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Posicionamento: escala x crescimento</h2>
+    <p class="hint">Carteira PME em escala logarítmica · crescimento anual</p>
+    <svg id="scatter" viewBox="0 0 460 340" width="100%" role="img" aria-label="Escala da carteira PME contra crescimento anual por player"></svg>
+    <p class="hint" style="margin:6px 0 0">Quadrante superior esquerdo: entrantes pequenos crescendo rápido. Direita: escala dos incumbentes.</p>
+  </div>
+</section>
+
+<section class="grid g2">
+  <div class="card">
+    <h2>Entrantes: base de clientes PJ</h2>
+    <p class="hint">Milhões de CNPJs · Mercado Pago, PagBank e C6 não divulgam a base PJ</p>
+    <div class="bars" id="clients"></div>
+  </div>
+  <div class="card rank">
+    <h2>Ranking de reclamações do Banco Central</h2>
+    <p class="hint">2T26 · reclamações procedentes por milhão de clientes · índice geral, não só PJ</p>
+    <div class="r"><span class="pos1">1º Bradesco</span><span>84,90</span></div>
+    <div class="r"><span>2º C6 Bank</span><span>59,77</span></div>
+    <div class="r"><span>3º BTG Pactual / Pan</span><span>41,98</span></div>
+    <div class="r"><span>8º Banco do Brasil</span><span class="na">posição</span></div>
+    <div class="r"><span>11º Caixa</span><span class="na">posição</span></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Comparativo dos players no segmento PJ</h2>
+  <p class="hint">Volume, crescimento, base e aposta estratégica de cada um</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Player</th><th>Tipo</th><th style="text-align:right">Carteira PME</th><th style="text-align:right">Cresc. anual</th><th>Período</th><th>Clientes PJ</th><th>Destaque de estratégia</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  </div>
+</section>
+
+<section class="grid g3">
+  <div class="card">
+    <h2>O que os incumbentes estão fazendo</h2>
+    <ul class="cmp">
+      <li>Migração para linhas com <b>garantia pública</b> (FGI, FGO, Pronampe): no Bradesco, +52,7% no trimestre.</li>
+      <li>Itaú com garantias em <b>70%</b> da carteira de micro e pequenas.</li>
+      <li>BB encolhe MPMEs (−10%) e prioriza consignado.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>O que os entrantes estão fazendo</h2>
+    <ul class="cmp">
+      <li>Crédito com <b>dados próprios</b> de vendas (maquininha, marketplace).</li>
+      <li>Produto único: conta + adquirência + crédito (Conta Negócio do Mercado Pago).</li>
+      <li>PagBank aceita mais risco: <b>24,3%</b> da carteira sem garantia.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>Perguntas para a área</h2>
+    <ul class="cmp">
+      <li>Onde estamos entre escala e crescimento no gráfico de posicionamento?</li>
+      <li>Usamos dados transacionais dos clientes PJ para conceder crédito?</li>
+      <li>Qual nossa estratégia para MEIs e micro empresas que hoje abrem conta nos digitais?</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Além do Banco Central: o que os players já divulgaram</h2>
+  <p class="hint">Movimentos em PJ publicados em RI, eventos e imprensa · mais recentes primeiro</p>
+  <div class="tablewrap">
+  <table class="pubtable">
+    <thead><tr><th>Player</th><th>Quando</th><th>O que foi divulgado</th><th>Fonte</th></tr></thead>
+    <tbody>
+      <tr><td><b>Inter</b></td><td>out/26</td><td>Chegou a 3 milhões de clientes PJ, que já fazem mais da metade das transações do banco; presença em cerca de 95% das cidades.</td><td><a class="src" href="https://www.letsmoney.com.br/fintech/inter-3-milhoes-clientes-pj-transacoes/">Comunicado</a></td></tr>
+      <tr><td><b>Setor</b></td><td>ago/26</td><td>Febraban Tech: orçamento de tecnologia dos bancos deve chegar a R$ 50,4 bi em 2026 (+8%); IA generativa é prioridade para 84% deles.</td><td><a class="src" href="https://legismap.com.br/conteudos/artigos-e-noticias/presidentes-dos-maiores-bancos-do-pais-debatem-no-febraban-tech-2026-o-impacto-dos-agentes-inteligentes-no-futuro-do-setor-financeiro">Evento</a></td></tr>
+      <tr><td><b>Bradesco</b></td><td>ago/26</td><td>Anunciou aumento de capital de até R$ 10 bi para sustentar o crescimento do crédito.</td><td><a class="src" href="https://investalk.bb.com.br/noticias/mercado/BBDC2T26">RI 2T26</a></td></tr>
+      <tr><td><b>PagBank</b></td><td>ago/26</td><td>Reforçou a meta de R$ 25 bi em carteira até 2029, puxada por capital de giro; parcela sem garantia subiu para 24,3%.</td><td><a class="src" href="https://finsidersbrasil.com.br/?p=372464">RI 2T26</a></td></tr>
+      <tr><td><b>Itaú</b></td><td>ago/26</td><td>Revisou para baixo a projeção de serviços e seguros (+2% a +5%) e manteve a de carteira de crédito (+5,5% a +9,5%).</td><td><a class="src" href="https://bpmoney.com.br/?p=414744">RI 2T26</a></td></tr>
+      <tr><td><b>Setor</b></td><td>jul/26</td><td>Ranking de maturidade em IA da Evident na América Latina: Nubank, Itaú, Bradesco e BB nas quatro primeiras posições.</td><td><a class="src" href="https://jornaldebrasilia.com.br/noticias/economia/nubank-itau-bradesco-e-bb-lideram-ranking-de-ia-entre-bancos-da-america-latina/">Estudo</a></td></tr>
+      <tr><td><b>Nubank</b></td><td>mai/26</td><td>6 milhões de CNPJs, maior base PJ do país; 2 milhões de cartões PJ; foco passa a ser micro e pequenas empresas, com mais crédito.</td><td><a class="src" href="https://www.letsmoney.com.br/noticias/nubank-6-milhoes-clientes-pj-pmes/">Comunicado</a></td></tr>
+      <tr><td><b>Santander</b></td><td>abr/26</td><td>Lançou o Get Tap e o Santander Rewards; crescimento seletivo em PMEs e alta renda.</td><td><a class="src" href="https://api.mziq.com/mzfilemanager/v2/d/a2595886-9fbb-4339-8a38-71d6ce7c7d36/227b8257-7fe0-6666-8706-75a5b5ccbb7b?origin=2">RI 1T26</a></td></tr>
+      <tr><td><b>Itaú</b></td><td>2026</td><td>Abertura de conta PJ pelo WhatsApp com IA generativa em menos de 5 minutos.</td><td><a class="src" href="https://www.letsmoney.com.br/tag/pj/">Imprensa</a></td></tr>
+      <tr><td><b>Bradesco</b></td><td>2026</td><td>Elegeu PMEs como principal motor de crescimento; aposta em gerente e relacionamento para ser o banco principal da empresa, com crédito seletivo baseado em dados.</td><td><a class="src" href="https://www.letsmoney.com.br/noticias/bradesco-pmes-motor-crescimento-2026/">Entrevista</a></td></tr>
+      <tr><td><b>Mercado Pago</b></td><td>2026</td><td>Lançou a Conta Negócio (conta, maquininha, gestão e crédito); diz oferecer crédito a 9 em cada 10 PMEs com faturamento acima de R$ 10 mil/mês; financeira capitalizada com R$ 2 bi.</td><td><a class="src" href="https://www.letsmoney.com.br/noticias/mercado-pago-conta-negocio-pme-credito/">Lançamento</a></td></tr>
+      <tr><td><b>Banco do Brasil</b></td><td>2026</td><td>1,3 milhão de empresas lideradas por mulheres na base PJ, com R$ 40,3 bi em crédito; mais de 2 mil soluções de IA em produção.</td><td><a class="src" href="https://www.letsmoney.com.br/pj/">Imprensa</a></td></tr>
+      <tr><td><b>Itaú</b></td><td>2025–26</td><td>Itaú Emps: conta digital PJ gratuita, com gestão financeira por IA e integração com a maquininha, para empresas de R$ 200 mil a R$ 3 mi de faturamento; MEIs a partir de 2026.</td><td><a class="src" href="https://www.bloomberglinea.com.br/negocios/de-mercearias-a-advogados-itau-quer-alavancar-expansao-com-novo-app-para-pmes/">Evento</a></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Insights para a consultoria</h2>
+  <p class="hint">Leitura cruzando os números do Banco Central com o que os players divulgaram · fato separado de interpretação</p>
+  <div class="ins">
+    <div class="insight"><h3>1. A briga em PJ deixou de ser crédito e virou principalidade</h3><dl>
+      <dt>Fato</dt><dd>Bradesco aposta em gerente para ser o banco principal; Itaú lança o Emps; Mercado Pago junta conta, maquininha e crédito; Inter já tem PJ em mais de 50% das transações.</dd>
+      <dt>Leitura</dt><dd>Quem concentra o fluxo de caixa da empresa ganha o crédito depois. A conta virou porta de entrada.</dd>
+      <dt>Para a área</dt><dd>Medir quantos clientes PJ têm nosso banco como conta principal e qual parte do faturamento passa por nós.</dd></dl></div>
+    <div class="insight"><h3>2. Dados de vendas viraram o novo modelo de crédito</h3><dl>
+      <dt>Fato</dt><dd>Mercado Pago (+40%) e PagBank (+31%) crescem com dados de marketplace e maquininha; Itaú integra a maquininha ao Emps.</dd>
+      <dt>Leitura</dt><dd>A vantagem dos entrantes é informação, não preço. Os incumbentes já respondem integrando adquirência e conta.</dd>
+      <dt>Para a área</dt><dd>Avaliar se usamos dados transacionais (adquirência, Pix, recebíveis) na concessão de crédito PJ.</dd></dl></div>
+    <div class="insight"><h3>3. Incumbentes dependem cada vez mais de garantia pública</h3><dl>
+      <dt>Fato</dt><dd>Carteira FGI/FGO do Bradesco +52,7% no trimestre; 70% da carteira de micro e pequenas do Itaú tem garantia. PagBank vai no sentido oposto, com 24,3% sem garantia.</dd>
+      <dt>Leitura</dt><dd>O crescimento dos grandes está apoiado em programas de governo; uma mudança nesses programas muda o jogo.</dd>
+      <dt>Para a área</dt><dd>Mapear nossa exposição a FGI, FGO e Pronampe e simular o cenário de redução desses programas.</dd></dl></div>
+    <div class="insight"><h3>4. A janela do MEI está fechando</h3><dl>
+      <dt>Fato</dt><dd>Nubank (6 mi) e Inter (3 mi) lideram em CNPJs, puxados por MEIs, e agora sobem para micro e pequenas. O Itaú abre o Emps para MEIs em 2026.</dd>
+      <dt>Leitura</dt><dd>O MEI de hoje é a PME de amanhã. Quem não captura a empresa no início compete depois só por preço.</dd>
+      <dt>Para a área</dt><dd>Definir uma proposta de valor para MEIs e um caminho de evolução até PME.</dd></dl></div>
+    <div class="insight"><h3>5. Crescer em PME agora significa assumir o ciclo de risco</h3><dl>
+      <dt>Fato</dt><dd>Inadimplência MPME em 5,71% contra 0,66% nas grandes empresas. Bradesco (+16%) e Mercado Pago (+40%) aceleram; BB (−10%) e BTG (−7%) recuam.</dd>
+      <dt>Leitura</dt><dd>Há duas apostas opostas no mercado. Os próximos trimestres vão mostrar quem precificou o risco certo.</dd>
+      <dt>Para a área</dt><dd>Acompanhar trimestralmente inadimplência e crescimento por player; é o primeiro alerta automático do painel.</dd></dl></div>
+    <div class="insight"><h3>6. IA já é diferencial de jornada em PJ</h3><dl>
+      <dt>Fato</dt><dd>Conta PJ pelo WhatsApp em menos de 5 minutos (Itaú); IA de crédito com mais de R$ 1 bi em receita (Bradesco); 84% dos bancos priorizam IA generativa.</dd>
+      <dt>Leitura</dt><dd>O padrão de experiência PJ está subindo rápido; abrir conta e pedir crédito viram critério de escolha.</dd>
+      <dt>Para a área</dt><dd>Fazer um benchmark de jornada (abertura de conta e pedido de crédito) com os principais players.</dd></dl></div>
+  </div>
+  <p class="note">Insights são interpretação da consultoria a partir de dados públicos; períodos e conceitos variam por player. Validar com dados internos antes de recomendar decisões.</p>
+</section>
+
+<footer>
+  <p><b>Leitura:</b> períodos diferem por player porque cada um divulga a carteira PME de um jeito; no painel automatizado, a API do Banco Central (IF.data) padroniza tudo no mesmo trimestre. Próximo passo: taxas PJ por banco (capital de giro, duplicatas) e inclusão do nosso banco.</p>
+  <p><b>Fontes:</b>
+  <a href="https://www.seebgoioere.org.br/noticia/1HG9-bancos-redirecionam-credito-para-pmes-para-linhas-garantidas-pelo-governo">PMEs 1T26 (Itaú, BB, Santander)</a> ·
+  <a href="https://moneytimes.com.br/bradesco-bbdc4-lucro-sobe-162-e-chega-a-r-71-bilhoes-no-2t26-pouco-acima-das-expectativas/">Bradesco 2T26</a> ·
+  <a href="https://api.mziq.com/mzfilemanager/v2/d/80f2e993-0a30-421a-9470-a4d5c8ad5e9f/0d7bd847-dbe1-3055-874d-420cbba33877?origin=2">Bradesco — apresentação 2T26</a> ·
+  <a href="https://br.advfn.com/jornal/2026/07/santander-brasil-registra-lucro-de-r-3-bilhoes-no-2t26-amplia-carteira-de-credito-e-reforca-eficiencia-operacional">Santander 2T26</a> ·
+  <a href="https://www.seudinheiro.com/2026/empresas/btg-pactual-bpac11-balanco-lucro-rentabilidade-roe-2t26-miql/">BTG 2T26</a> ·
+  <a href="https://www.letsmoney.com.br/noticias/mercado-pago-conta-negocio-pme-credito/">Mercado Pago</a> ·
+  <a href="https://bpmoney.com.br/?p=416371">PagBank 2T26</a> ·
+  <a href="https://finsidersbrasil.com.br/?p=372464">PagBank crédito</a> ·
+  <a href="https://www.letsmoney.com.br/noticias/nubank-6-milhoes-clientes-pj-pmes/">Nubank PJ</a> ·
+  <a href="https://www.letsmoney.com.br/fintech/inter-3-milhoes-clientes-pj-transacoes/">Inter PJ</a> ·
+  <a href="https://www.infomoney.com.br/economia/inadimplencia-mpmes-credito-em-atraso-brasil/">Inadimplência MPMEs</a> ·
+  <a href="https://api.mziq.com/mzfilemanager/v2/d/5b15da22-d953-4758-8779-844a926baccc/5a611384-3cac-5725-a59d-a88e1ec72aab?origin=2">Anefac juros</a> ·
+  <a href="https://www.letsmoney.com.br/noticias/bradesco-ranking-reclamacoes-bc-2tri/">Ranking de reclamações 2T26</a> · as fontes das divulgações estão na tabela "Além do Banco Central".</p>
+</footer>
+</div>
+
+<script>
+const players = [
+  {n:'Itaú', t:'inc', v:302.8, g:11, p:'1T26', c:null, s:'Crescimento puxado por PMEs; garantias em 70% da carteira de micro e pequenas'},
+  {n:'Bradesco', t:'inc', v:267, g:16.1, p:'2T26', c:null, s:'Share de 17,4% no crédito SME; carteira FGI/FGO +52,7% no trimestre'},
+  {n:'Banco do Brasil', t:'inc', v:111.4, g:-10, p:'1T26', c:null, s:'Carteira MPME em queda; foco em consignado público e privado'},
+  {n:'Santander', t:'inc', v:93.7, g:10, p:'1T26', c:null, s:'PMEs +12% no 2T26; atraso de 15 a 90 dias em PMEs caiu 0,3 p.p.'},
+  {n:'BTG Pactual', t:'inc', v:26.6, g:-7, p:'2T26', c:null, s:'Reduz PMEs por spreads pouco atrativos; grandes empresas +25%'},
+  {n:'Mercado Pago', t:'ent', v:11, g:40, p:'2025', c:null, s:'Conta Negócio une conta, maquininha e crédito; dados do marketplace'},
+  {n:'PagBank*', t:'ent', v:5.1, g:31, p:'2T26', c:null, s:'Capital de giro +204%; 24,3% sem garantia; meta de R$ 25 bi em 2029'},
+  {n:'Nubank', t:'ent', v:null, g:null, p:'mai/26', c:6, s:'Maior base de CNPJs; 2 mi de cartões PJ; foco em micro e pequenas'},
+  {n:'Inter', t:'ent', v:null, g:null, p:'out/26', c:3, s:'PJ já faz mais da metade das transações; contas PJ +24% no ano'}
+];
+const fmt = x => x.toLocaleString('pt-BR',{maximumFractionDigits:1});
+const gtxt = g => g==null ? '<span class="na">n/d</span>' : `<span class="${g<0?'neg':'pos'}">${g>0?'+':''}${fmt(g)}%</span>`;
+
+function renderBars(f){
+  const list = players.filter(p => p.v!=null && (f==='all' || p.t===f));
+  const max = Math.max(...players.filter(p=>p.v!=null).map(p=>p.v));
+  document.getElementById('bars').innerHTML = list.map(p => {
+    const w = Math.max(p.v/max*78, .8);
+    return `<div class="row"><div class="name">${p.n}<small>${p.p}</small></div>
+      <div class="track"><div class="fill ${p.t}" style="width:${w}%"></div><span class="amt" style="left:${w}%">R$ ${fmt(p.v)} bi</span></div>
+      <div class="gr">${gtxt(p.g)}</div></div>`;
+  }).join('');
+}
+document.querySelectorAll('.filters button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.filters button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); renderBars(b.dataset.f);
+}));
+renderBars('all');
+
+document.getElementById('clients').innerHTML = players.filter(p=>p.c).map(p =>
+  `<div class="row"><div class="name">${p.n}<small>${p.p}</small></div>
+   <div class="track"><div class="fill ent" style="width:${p.c/6*78}%"></div><span class="amt" style="left:${p.c/6*78}%">${p.c} milhões</span></div><div></div></div>`).join('');
+
+document.getElementById('tbody').innerHTML = players.map(p => `<tr>
+  <td><b>${p.n}</b></td>
+  <td><span class="pill ${p.t}">${p.t==='inc'?'Incumbente':'Entrante'}</span></td>
+  <td class="num">${p.v==null?'<span class="na">não divulga</span>':'R$ '+fmt(p.v)+' bi'}</td>
+  <td class="num">${gtxt(p.g)}</td>
+  <td>${p.p}</td>
+  <td>${p.c?p.c+' milhões':'<span class="na">n/d</span>'}</td>
+  <td>${p.s}</td></tr>`).join('');
+
+(function scatter(){
+  const svg = document.getElementById('scatter'), NS='http://www.w3.org/2000/svg';
+  const L=52,R=440,T=16,B=296, xmin=Math.log10(3), xmax=Math.log10(500), ymin=-15, ymax=45;
+  const X = v => L + (Math.log10(v)-xmin)/(xmax-xmin)*(R-L);
+  const Y = g => B - (g-ymin)/(ymax-ymin)*(B-T);
+  const el = (n,a,txt) => { const e=document.createElementNS(NS,n); for(const k in a) e.setAttribute(k,a[k]); if(txt!=null) e.textContent=txt; svg.appendChild(e); return e; };
+  const css = getComputedStyle(document.documentElement);
+  const c = k => css.getPropertyValue(k).trim();
+  [-10,0,10,20,30,40].forEach(g => {
+    el('line',{x1:L,x2:R,y1:Y(g),y2:Y(g),stroke:c('--line'),'stroke-width':g===0?1.5:1});
+    el('text',{x:L-8,y:Y(g)+4,'text-anchor':'end','font-size':11,fill:c('--muted')},(g>0?'+':'')+g+'%');
+  });
+  [5,10,30,100,300].forEach(v => el('text',{x:X(v),y:B+18,'text-anchor':'middle','font-size':11,fill:c('--muted')},'R$ '+v+' bi'));
+  el('text',{x:(L+R)/2,y:B+36,'text-anchor':'middle','font-size':11,fill:c('--muted')},'Carteira PME (escala log)');
+  const off = {'Itaú':[-8,-10,'end'],'Bradesco':[-8,-10,'end'],'Banco do Brasil':[-8,16,'end'],'Santander':[-8,16,'end'],'BTG Pactual':[8,16,'start'],'Mercado Pago':[10,4,'start'],'PagBank*':[10,4,'start']};
+  players.filter(p=>p.v!=null).forEach(p => {
+    const col = p.t==='inc'?c('--inc'):c('--ent');
+    el('circle',{cx:X(p.v),cy:Y(p.g),r:7,fill:col,'fill-opacity':.85});
+    const o = off[p.n]||[10,4,'start'];
+    el('text',{x:X(p.v)+o[0],y:Y(p.g)+o[1],'text-anchor':o[2],'font-size':12,'font-weight':600,fill:c('--ink')},p.n);
+  });
+})();
+</script>
+</body>
+</html>
